@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>VOID — Demo</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#000;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  min-height:100vh;
+  font-family:'Courier New',monospace;
+  user-select:none; overflow:hidden;
+}
+#hud {
+  display:flex; justify-content:space-between; align-items:center;
+  width:600px; padding:10px 2px 8px;
+}
+.p1i { color:#00E5FF; }
+.p2i { color:#FF6B35; text-align:right; }
+.tbig { font-size:20px; font-weight:bold; letter-spacing:0.05em; }
+.tsm  { font-size:10px; opacity:0.5; margin-top:3px; letter-spacing:0.1em; }
+#phase { font-size:10px; letter-spacing:0.2em; color:#2a2a2a; text-align:center; }
+canvas { display:block; }
+#hint {
+  width:600px; text-align:center;
+  font-size:10px; color:#111;
+  letter-spacing:0.12em; padding:6px 0;
+}
+#end {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.92);
+  flex-direction:column; align-items:center; justify-content:center;
+  font-family:'Courier New',monospace;
+}
+#end.on { display:flex; }
+#end-title { font-size:52px; letter-spacing:0.08em; margin-bottom:16px; }
+#end-details { font-size:13px; color:#555; line-height:2.2; margin-bottom:32px; }
+#btn {
+  background:transparent; border:1px solid #333;
+  color:#666; padding:10px 32px;
+  font-family:'Courier New',monospace; font-size:12px;
+  letter-spacing:0.2em; cursor:pointer; transition:all 0.2s;
+}
+#btn:hover { border-color:#fff; color:#fff; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="p1i">
+    <div class="tbig" id="t1">01:30</div>
+    <div class="tsm">WASD · 0 relojes</div>
+  </div>
+  <div id="phase">FASE CIEGA</div>
+  <div class="p2i">
+    <div class="tbig" id="t2">01:30</div>
+    <div class="tsm">0 relojes · ← → ↑ ↓</div>
+  </div>
+</div>
+
+<canvas id="c"></canvas>
+<div id="hint">collect clocks · last one alive wins</div>
+
+<div id="end">
+  <div id="end-title"></div>
+  <div id="end-details"></div>
+  <button id="btn" onclick="init()">[ PLAY AGAIN ]</button>
+</div>
+
+<script>
+const cv = document.getElementById('c');
+const cx = cv.getContext('2d');
+const COLS=25, ROWS=25, CS=24;
+cv.width = COLS*CS; cv.height = ROWS*CS;
+
+// ── MAZE ─────────────────────────────────────────────────────────────
+function genMaze() {
+  const W = Array.from({length:ROWS}, ()=>
+    Array.from({length:COLS}, ()=>({N:true,S:true,E:true,W:true}))
+  );
+  const vis = Array.from({length:ROWS}, ()=>new Array(COLS).fill(false));
+  function sh(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a; }
+  function carve(x,y){
+    vis[y][x]=true;
+    for(const {dx,dy,w,o} of sh([{dx:0,dy:-1,w:'N',o:'S'},{dx:0,dy:1,w:'S',o:'N'},{dx:1,dy:0,w:'E',o:'W'},{dx:-1,dy:0,w:'W',o:'E'}])){
+      const nx=x+dx,ny=y+dy;
+      if(nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&!vis[ny][nx]){
+        W[y][x][w]=false; W[ny][nx][o]=false; carve(nx,ny);
+      }
+    }
+  }
+  carve(0,0); return W;
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────
+let maze,P,clocks,footprints,walls,echos;
+let gtime,spawnCD,over,goldCount,raf,lastT;
+
+const PHASES=[
+  {name:'FASE CIEGA',  rate:15,  end:180},
+  {name:'FASE PULSO',  rate:30,  end:360},
+  {name:'FASE SOMBRA', rate:60,  end:540},
+  {name:'LA NOCHE',    rate:120, end:Infinity},
+];
+const CTYPES=[
+  {type:'bronze',t:20, col:'#C8922A',w:60},
+  {type:'silver',t:45, col:'#8BAEC4',w:25},
+  {type:'gold',  t:90, col:'#D4A800',w:10},
+  {type:'shadow',t:-40,col:'#C8922A',w:5},
+];
+
+function pickType(){
+  const avail=CTYPES.filter(c=>c.type!=='gold'||goldCount<2);
+  const tot=avail.reduce((s,c)=>s+c.w,0);
+  let r=Math.random()*tot;
+  for(const c of avail){r-=c.w; if(r<=0)return c;}
+  return avail[0];
+}
+function freeCell(){
+  const occ=[{x:P[0].x,y:P[0].y},{x:P[1].x,y:P[1].y},...clocks.map(c=>({x:c.x,y:c.y}))];
+  for(let t=0;t<300;t++){
+    const x=1+Math.floor(Math.random()*(COLS-2)),y=1+Math.floor(Math.random()*(ROWS-2));
+    if(!occ.some(o=>o.x===x&&o.y===y))return{x,y};
+  }
+  return null;
+}
+function mkParticle(sx,sy){
+  const a=Math.random()*Math.PI*2, sp=0.25+Math.random()*0.45;
+  return{x:sx+.5,y:sy+.5,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:.12+Math.random()*.12};
+}
+function spawnClock(){
+  const pos=freeCell(); if(!pos)return;
+  const ct=pickType(); if(ct.type==='gold')goldCount++;
+  clocks.push({...pos,...ct,
+    pulse:Math.random()*8, mirror:Math.random()*15,
+    parts:Array.from({length:4},()=>mkParticle(pos.x,pos.y)),
+    rev:ct.type!=='shadow'
+  });
+}
+
+function init(){
+  document.getElementById('end').classList.remove('on');
+  maze=genMaze(); gtime=0; spawnCD=8; over=false; goldCount=0;
+  clocks=[]; footprints=[]; walls=[]; echos=[]; lastT=null;
+  P=[
+    {x:1,  y:1,  col:'#00E5FF',glow:'#00E5FF',time:90,sc:0,alive:true,flash:0,cd:0,
+     up:'w',down:'s',left:'a',right:'d', death:null, label:'P1'},
+    {x:23, y:23, col:'#FF6B35',glow:'#FF6B35',time:90,sc:0,alive:true,flash:0,cd:0,
+     up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight', death:null, label:'P2'},
+  ];
+  if(raf)cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(loop);
+}
+
+// ── INPUT ─────────────────────────────────────────────────────────────
+const KD={};
+window.addEventListener('keydown',e=>{
+  KD[e.key]=true;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','w','a','s','d'].includes(e.key)) e.preventDefault();
+});
+window.addEventListener('keyup',e=>{ KD[e.key]=false; });
+
+function tryMove(p,dx,dy){
+  if(!p.alive||p.cd>0) return;
+  const wk=dx===1?'E':dx===-1?'W':dy===1?'S':'N';
+  const ok=dx===1?'W':dx===-1?'E':dy===1?'N':'S';
+  const nx=p.x+dx,ny=p.y+dy;
+  if(nx<0||nx>=COLS||ny<0||ny>=ROWS)return;
+  if(maze[p.y][p.x][wk]){
+    p.flash=0.3; p.cd=0.15;
+    walls.push({x:p.x,y:p.y,d:wk,a:1},{x:nx,y:ny,d:ok,a:1});
+    return;
+  }
+  p.x=nx; p.y=ny; p.cd=0.11;
+  for(const cl of clocks){
+    if(Math.abs(cl.x-nx)+Math.abs(cl.y-ny)<=3)
+      footprints.push({x:nx,y:ny,a:0.55,decay:0.1});
+  }
+}
+
+// ── UPDATE ────────────────────────────────────────────────────────────
+function getPhase(){ for(let i=0;i<PHASES.length;i++){if(gtime<PHASES[i].end)return i;} return 3; }
+
+function update(dt){
+  gtime+=dt;
+  for(const p of P){
+    p.cd=Math.max(0,p.cd-dt);
+    p.flash=Math.max(0,p.flash-dt);
+    if(!p.alive)continue;
+    p.time-=dt;
+    if(p.time<=0){
+      p.time=0; p.alive=false;
+      p.death={r:0,a:1.0,x:p.x,y:p.y};
+    }
+  }
+
+  // Input
+  if(KD[P[0].up])   tryMove(P[0], 0,-1);
+  if(KD[P[0].down]) tryMove(P[0], 0, 1);
+  if(KD[P[0].left]) tryMove(P[0],-1, 0);
+  if(KD[P[0].right])tryMove(P[0], 1, 0);
+  if(KD[P[1].up])   tryMove(P[1], 0,-1);
+  if(KD[P[1].down]) tryMove(P[1], 0, 1);
+  if(KD[P[1].left]) tryMove(P[1],-1, 0);
+  if(KD[P[1].right])tryMove(P[1], 1, 0);
+
+  // Clock pickup
+  for(const p of P){
+    if(!p.alive)continue;
+    for(let i=clocks.length-1;i>=0;i--){
+      const cl=clocks[i];
+      if(cl.x===p.x&&cl.y===p.y){
+        p.time=Math.max(0,p.time+cl.t); p.sc++;
+        echos.push({x:cl.x,y:cl.y,a:0.6,decay:0.05});
+        clocks.splice(i,1);
+      }
+    }
+  }
+
+  // Spawn
+  spawnCD-=dt;
+  if(spawnCD<=0){ spawnClock(); spawnCD=PHASES[getPhase()].rate; }
+
+  // Clock update
+  for(const cl of clocks){
+    cl.pulse+=dt; cl.mirror+=dt;
+    for(let i=0;i<cl.parts.length;i++){
+      const pt=cl.parts[i];
+      pt.x+=pt.vx*dt; pt.y+=pt.vy*dt; pt.life-=pt.decay*dt;
+      if(pt.life<=0) cl.parts[i]=mkParticle(cl.x,cl.y);
+    }
+    if(cl.type==='shadow'){
+      cl.rev=(Math.abs(cl.x-P[0].x)+Math.abs(cl.y-P[0].y)<=1)||
+             (Math.abs(cl.x-P[1].x)+Math.abs(cl.y-P[1].y)<=1);
+    }
+  }
+
+  // Decay arrays
+  for(const w of walls) w.a-=dt*0.65;
+  walls=walls.filter(w=>w.a>0);
+  for(const f of footprints) f.a-=f.decay*dt;
+  footprints=footprints.filter(f=>f.a>0);
+  for(const e of echos) e.a-=e.decay*dt;
+  echos=echos.filter(e=>e.a>0);
+
+  // Death burst
+  for(const p of P){
+    if(!p.death)continue;
+    p.death.r+=dt*80; p.death.a-=dt*1.8;
+    if(p.death.a<=0) p.death=null;
+  }
+
+  // HUD
+  const ph=getPhase();
+  document.getElementById('phase').textContent=PHASES[ph].name;
+  document.getElementById('t1').textContent=fmt(P[0].time);
+  document.getElementById('t2').textContent=fmt(P[1].time);
+  document.querySelector('.p1i .tsm').textContent=`WASD · ${P[0].sc} relojes`;
+  document.querySelector('.p2i .tsm').textContent=`${P[1].sc} relojes · ← → ↑ ↓`;
+
+  // End check
+  const alive=P.filter(p=>p.alive);
+  if(alive.length<=1&&!over){
+    over=true;
+    setTimeout(()=>showEnd(alive[0]),700);
+  }
+}
+
+function fmt(s){
+  s=Math.max(0,s);
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+}
+function showEnd(w){
+  const el=document.getElementById('end');
+  const title=document.getElementById('end-title');
+  const det=document.getElementById('end-details');
+  if(!w){ title.style.color='#555'; title.textContent='EMPATE'; }
+  else {
+    title.style.color=w.col;
+    title.textContent=w===P[0]?'P1 GANA':'P2 GANA';
+  }
+  det.innerHTML=
+    `<span style="color:#00E5FF">P1</span> — ${fmt(P[0].time)} restante · ${P[0].sc} relojes<br>`+
+    `<span style="color:#FF6B35">P2</span> — ${fmt(P[1].time)} restante · ${P[1].sc} relojes`;
+  el.classList.add('on');
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────
+function ccx(x){ return x*CS+CS/2; }
+function ccy(y){ return y*CS+CS/2; }
+function hex3(h){ return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+
+function proximityColor(p){
+  let md=999;
+  for(const cl of clocks){ const d=Math.abs(cl.x-p.x)+Math.abs(cl.y-p.y); if(d<md)md=d; }
+  if(clocks.length===0) return p.col;
+  if(md<=1) return '#FFFFFF';
+  if(md<=4){
+    const t=(1-(md-1)/4)*0.75;
+    const [r1,g1,b1]=hex3(p.col);
+    const r=Math.round(r1+(255-r1)*t),g=Math.round(g1+(255-g1)*t),b=Math.round(b1+(255-b1)*t);
+    return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+  }
+  return p.col;
+}
+
+function draw(){
+  cx.fillStyle='#000'; cx.fillRect(0,0,cv.width,cv.height);
+
+  // Outer border
+  cx.strokeStyle='#0d0d0d'; cx.lineWidth=1;
+  cx.strokeRect(0,0,cv.width,cv.height);
+
+  // ── Echos ──
+  for(const e of echos){
+    cx.beginPath(); cx.arc(ccx(e.x),ccy(e.y),9,0,Math.PI*2);
+    cx.strokeStyle=`rgba(255,255,255,${e.a})`; cx.lineWidth=1; cx.stroke();
+  }
+
+  // ── Footprints ──
+  for(const f of footprints){
+    cx.fillStyle=`rgba(255,255,255,${f.a*0.3})`;
+    cx.fillRect(f.x*CS+7,f.y*CS+7,CS-14,CS-14);
+  }
+
+  // ── Clocks + hints ──
+  for(const cl of clocks){
+    const px=ccx(cl.x), py=ccy(cl.y);
+    const dc=(cl.type==='shadow'&&!cl.rev)?'#C8922A':cl.col;
+    const [dr,dg,db]=hex3(dc);
+
+    // Hint 6: Espejo fugaz
+    const mp=cl.mirror%15;
+    if(mp<0.35&&cl.y>0){
+      const a=(1-mp/0.35)*0.45;
+      cx.fillStyle=`rgba(255,255,255,${a})`;
+      cx.fillRect(cl.x*CS,( cl.y-1)*CS,CS,CS);
+    }
+
+    // Hint 2: Latido
+    const pp=cl.pulse%8;
+    if(pp<2.8){
+      const prog=pp/2.8;
+      cx.beginPath();
+      cx.arc(px,py,prog*CS*2.8,0,Math.PI*2);
+      cx.strokeStyle=`rgba(${dr},${dg},${db},${(1-prog)*0.55})`;
+      cx.lineWidth=1.5; cx.stroke();
+    }
+
+    // Clock body
+    cx.shadowBlur=18; cx.shadowColor=dc;
+    cx.beginPath(); cx.arc(px,py,5,0,Math.PI*2);
+    cx.fillStyle=dc; cx.fill();
+    cx.shadowBlur=0;
+
+    // Shadow clock erratic reveal
+    if(cl.type==='shadow'&&cl.rev){
+      const er=Math.sin(gtime*18)*0.5+0.5;
+      cx.beginPath(); cx.arc(px,py,5+er*7,0,Math.PI*2);
+      cx.strokeStyle=`rgba(200,0,0,${er*0.9})`; cx.lineWidth=1.5; cx.stroke();
+    }
+
+    // Hint 3: Partículas
+    for(const pt of cl.parts){
+      cx.beginPath();
+      cx.arc(pt.x*CS, pt.y*CS, 1.5, 0, Math.PI*2);
+      cx.fillStyle=`rgba(${dr},${dg},${db},${pt.life*0.65})`;
+      cx.fill();
+    }
+  }
+
+  // ── Revealed walls ──
+  for(const w of walls){
+    cx.strokeStyle=`rgba(255,255,255,${Math.max(0,w.a)})`;
+    cx.lineWidth=2.5; cx.lineCap='round';
+    const wx=w.x*CS, wy=w.y*CS;
+    cx.beginPath();
+    if(w.d==='N'){cx.moveTo(wx,wy);cx.lineTo(wx+CS,wy);}
+    else if(w.d==='S'){cx.moveTo(wx,wy+CS);cx.lineTo(wx+CS,wy+CS);}
+    else if(w.d==='W'){cx.moveTo(wx,wy);cx.lineTo(wx,wy+CS);}
+    else{cx.moveTo(wx+CS,wy);cx.lineTo(wx+CS,wy+CS);}
+    cx.stroke();
+  }
+
+  // ── Players ──
+  for(const p of P){
+    if(!p.alive)continue;
+    const px=ccx(p.x), py=ccy(p.y);
+    const dotCol=p.flash>0?'#FF2222':proximityColor(p);
+
+    cx.shadowBlur=22; cx.shadowColor=p.flash>0?'#FF0000':p.glow;
+    cx.beginPath(); cx.arc(px,py,7,0,Math.PI*2);
+    cx.fillStyle=dotCol; cx.fill();
+    cx.shadowBlur=0;
+
+    // Timer arc
+    const frac=Math.min(p.time/90,1);
+    const arcCol=p.time<20?'#FF3333':p.col;
+    cx.beginPath();
+    cx.arc(px,py,11,-Math.PI/2,-Math.PI/2+Math.PI*2*frac);
+    cx.strokeStyle=arcCol; cx.lineWidth=2; cx.stroke();
+
+    // Low time pulse
+    if(p.time<15&&Math.floor(gtime*5)%2===0){
+      cx.beginPath(); cx.arc(px,py,15,0,Math.PI*2);
+      cx.strokeStyle='rgba(255,50,50,0.35)'; cx.lineWidth=1; cx.stroke();
+    }
+
+    // Label
+    cx.fillStyle=p.col; cx.font='9px Courier New'; cx.textAlign='center';
+    cx.fillText(p.label,px,py-17);
+  }
+
+  // ── Death bursts ──
+  for(const p of P){
+    if(!p.death)continue;
+    cx.beginPath();
+    cx.arc(ccx(p.death.x),ccy(p.death.y),p.death.r,0,Math.PI*2);
+    cx.strokeStyle=`rgba(255,255,255,${Math.max(0,p.death.a)})`;
+    cx.lineWidth=2; cx.stroke();
+  }
+}
+
+// ── LOOP ─────────────────────────────────────────────────────────────
+function loop(ts){
+  if(!lastT)lastT=ts;
+  const dt=Math.min((ts-lastT)/1000,0.05); lastT=ts;
+  if(!over) update(dt);
+  draw();
+  raf=requestAnimationFrame(loop);
+}
+
+init();
+</script>
+</body>
+</html>
