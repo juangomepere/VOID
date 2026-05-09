@@ -1,438 +1,946 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>VOID — Demo</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VOID</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  background:#000;
-  display:flex; flex-direction:column;
-  align-items:center; justify-content:center;
-  min-height:100vh;
-  font-family:'Courier New',monospace;
-  user-select:none; overflow:hidden;
-}
-#hud {
-  display:flex; justify-content:space-between; align-items:center;
-  width:600px; padding:10px 2px 8px;
-}
-.p1i { color:#00E5FF; }
-.p2i { color:#FF6B35; text-align:right; }
-.tbig { font-size:20px; font-weight:bold; letter-spacing:0.05em; }
-.tsm  { font-size:10px; opacity:0.5; margin-top:3px; letter-spacing:0.1em; }
-#phase { font-size:10px; letter-spacing:0.2em; color:#2a2a2a; text-align:center; }
-canvas { display:block; }
-#hint {
-  width:600px; text-align:center;
-  font-size:10px; color:#111;
-  letter-spacing:0.12em; padding:6px 0;
-}
-#end {
-  display:none; position:fixed; inset:0;
-  background:rgba(0,0,0,0.92);
-  flex-direction:column; align-items:center; justify-content:center;
-  font-family:'Courier New',monospace;
-}
-#end.on { display:flex; }
-#end-title { font-size:52px; letter-spacing:0.08em; margin-bottom:16px; }
-#end-details { font-size:13px; color:#555; line-height:2.2; margin-bottom:32px; }
-#btn {
-  background:transparent; border:1px solid #333;
-  color:#666; padding:10px 32px;
-  font-family:'Courier New',monospace; font-size:12px;
-  letter-spacing:0.2em; cursor:pointer; transition:all 0.2s;
-}
-#btn:hover { border-color:#fff; color:#fff; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.screen{display:none;flex-direction:column;align-items:center}
+.screen.active{display:flex}
+/* ── LANDING ── */
+#s-landing{gap:48px}
+.void-title{font-size:88px;letter-spacing:24px;color:#fff;text-shadow:0 0 60px rgba(255,255,255,.4);font-weight:bold}
+.landing-row{display:flex;gap:16px}
+.btn{background:transparent;border:1px solid #2a2a2a;color:#666;font-family:'Courier New',monospace;font-size:12px;letter-spacing:3px;padding:12px 28px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn:hover,.btn.active-btn{border-color:#fff;color:#fff;box-shadow:0 0 16px rgba(255,255,255,.1)}
+.btn:disabled{opacity:.3;cursor:not-allowed}
+#join-form{display:none;flex-direction:column;align-items:center;gap:10px;margin-top:-16px}
+#join-form input{background:transparent;border:1px solid #2a2a2a;color:#fff;font-family:'Courier New',monospace;font-size:28px;letter-spacing:10px;padding:10px 20px;text-align:center;width:220px;transition:border-color .2s}
+#join-form input:focus{outline:none;border-color:#555}
+/* ── LOBBY ── */
+#s-lobby{gap:22px;max-width:640px;width:100%;padding:40px 24px}
+.lbl{font-size:9px;letter-spacing:4px;color:#333;text-transform:uppercase;margin-bottom:6px}
+.room-code{font-size:52px;letter-spacing:14px;color:#fff;text-shadow:0 0 24px rgba(255,255,255,.3)}
+.slot-row{display:flex;gap:10px}
+.slot-btn{background:transparent;border:1px solid #1a1a1a;color:#333;font-family:'Courier New',monospace;font-size:11px;letter-spacing:2px;padding:8px 18px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.slot-btn:hover,.slot-btn.sel{border-color:#555;color:#aaa}
+.slot-btn.sel{border-color:#fff;color:#fff}
+.color-grid{display:grid;grid-template-columns:repeat(5,38px);gap:5px}
+.swatch{width:38px;height:38px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;position:relative;flex-shrink:0}
+.swatch:not(.taken):hover{transform:scale(1.18);border-color:rgba(255,255,255,.6)}
+.swatch.taken{opacity:.15;cursor:not-allowed}
+.swatch.picked::after{content:attr(data-label);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:bold;color:#000;pointer-events:none}
+.player-list{width:100%;border-top:1px solid #0f0f0f}
+.p-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #0f0f0f}
+.p-dot-sm{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.p-name{font-size:11px;color:#555;letter-spacing:1px;flex:1}
+.host-tag{font-size:9px;color:#2a2a2a;letter-spacing:2px}
+.err{color:#ff4444;font-size:11px;letter-spacing:1px;min-height:14px}
+.info{font-size:10px;color:#2a2a2a;letter-spacing:2px}
+/* ── GAME ── */
+#s-game{gap:0}
+#g-top{width:760px;display:flex;align-items:flex-start;justify-content:space-between;padding:8px 0 5px}
+.g-timer{font-size:22px;font-weight:bold;letter-spacing:2px;line-height:1}
+.g-score{font-size:9px;color:#333;letter-spacing:2px;margin-top:3px}
+#g-phase{font-size:9px;letter-spacing:4px;color:#222;text-align:center;padding-top:6px}
+#g-main{display:flex}
+#c{display:block;background:#000}
+#sidebar{width:160px;height:600px;overflow-y:auto;background:#030303;border-left:1px solid #0d0d0d;padding:6px 0}
+#sidebar::-webkit-scrollbar{width:3px}
+#sidebar::-webkit-scrollbar-thumb{background:#1a1a1a}
+.sb-row{display:flex;align-items:center;gap:7px;padding:5px 10px}
+.sb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sb-t{font-size:11px;letter-spacing:1px;flex:1}
+.sb-sc{font-size:9px;color:#222;letter-spacing:1px}
+.sb-row.dead .sb-t{color:#1a1a1a!important;text-decoration:line-through}
+.sb-row.dead .sb-dot{opacity:.15}
+/* ── END ── */
+#s-end{gap:24px;text-align:center}
+.end-title{font-size:56px;letter-spacing:6px}
+.end-sub{font-size:11px;color:#444;letter-spacing:2px;margin-top:-16px}
+.end-stats{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.end-row{display:flex;align-items:center;justify-content:center;gap:10px;font-size:12px;letter-spacing:1px}
+.end-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.win-tag{font-size:9px;color:#333;letter-spacing:2px}
+.elim-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:32px;letter-spacing:4px;color:#fff;pointer-events:none;opacity:0;transition:opacity .3s;text-align:center;z-index:999}
+.elim-msg.show{opacity:1}
 </style>
 </head>
 <body>
 
-<div id="hud">
-  <div class="p1i">
-    <div class="tbig" id="t1">01:30</div>
-    <div class="tsm">WASD · 0 relojes</div>
+<!-- LANDING -->
+<div id="s-landing" class="screen active">
+  <div class="void-title">VOID</div>
+  <div class="landing-row">
+    <button class="btn" id="btn-create">Create Room</button>
+    <button class="btn" id="btn-join">Join Room</button>
   </div>
-  <div id="phase">FASE CIEGA</div>
-  <div class="p2i">
-    <div class="tbig" id="t2">01:30</div>
-    <div class="tsm">0 relojes · ← → ↑ ↓</div>
+  <div id="join-form">
+    <input id="code-input" type="text" maxlength="4" placeholder="0000" autocomplete="off" inputmode="numeric">
+    <button class="btn" id="btn-join-go">Join →</button>
+    <div class="err" id="land-err"></div>
   </div>
 </div>
 
-<canvas id="c"></canvas>
-<div id="hint">collect clocks · last one alive wins</div>
-
-<div id="end">
-  <div id="end-title"></div>
-  <div id="end-details"></div>
-  <button id="btn" onclick="init()">[ PLAY AGAIN ]</button>
+<!-- LOBBY -->
+<div id="s-lobby" class="screen">
+  <div>
+    <div class="lbl">Room Code</div>
+    <div class="room-code" id="lobby-code">----</div>
+  </div>
+  <div>
+    <div class="lbl">Players on this device</div>
+    <div class="slot-row">
+      <button class="slot-btn" id="slot1-btn">1 Player &nbsp;(WASD)</button>
+      <button class="slot-btn" id="slot2-btn">2 Players &nbsp;(WASD + Arrows)</button>
+    </div>
+  </div>
+  <div id="picker0-wrap">
+    <div class="lbl" id="picker0-lbl">Your Color</div>
+    <div class="color-grid" id="grid0"></div>
+  </div>
+  <div id="picker1-wrap" style="display:none">
+    <div class="lbl">Player 2 Color (Arrows)</div>
+    <div class="color-grid" id="grid1"></div>
+  </div>
+  <div class="player-list" id="lobby-list"></div>
+  <button class="btn" id="start-btn" style="display:none">Start Game</button>
+  <div class="info" id="lobby-wait">Waiting for host to start...</div>
+  <div class="err" id="lobby-err"></div>
 </div>
+
+<!-- GAME -->
+<div id="s-game" class="screen">
+  <div id="g-top">
+    <div id="hud0">
+      <div class="g-timer" id="t0">01:00</div>
+      <div class="g-score" id="sc0">0 clocks</div>
+    </div>
+    <div id="g-phase">FASE CIEGA</div>
+    <div id="hud1" style="text-align:right;display:none">
+      <div class="g-timer" id="t1">01:00</div>
+      <div class="g-score" id="sc1">0 clocks</div>
+    </div>
+  </div>
+  <div id="g-main">
+    <canvas id="c" width="600" height="600"></canvas>
+    <div id="sidebar"></div>
+  </div>
+</div>
+
+<!-- END -->
+<div id="s-end" class="screen">
+  <div class="end-title" id="end-title">VOID</div>
+  <div class="end-sub" id="end-sub"></div>
+  <div class="end-stats" id="end-stats"></div>
+  <button class="btn" id="play-again" style="display:none">Play Again</button>
+  <div class="info" id="end-wait" style="display:none">Waiting for host...</div>
+</div>
+
+<div class="elim-msg" id="elim-msg"></div>
 
 <script>
-const cv = document.getElementById('c');
-const cx = cv.getContext('2d');
-const COLS=25, ROWS=25, CS=24;
-cv.width = COLS*CS; cv.height = ROWS*CS;
+// ── CONSTANTS ──────────────────────────────────────────────────────────────────
+const COLS=25,ROWS=25,CS=24;
+const PALETTE=[
+  '#00E5FF','#FF6B35','#39FF14','#FF00FF','#FFD700',
+  '#FF1744','#7C4DFF','#00E676','#FF6D00','#18FFFF',
+  '#FF4081','#69F0AE','#40C4FF','#EA80FC','#FFFF00',
+  '#FF6E40','#B2FF59','#84FFFF','#FF80AB','#CCF600',
+  '#FFFFFF','#FF5252','#448AFF','#F4FF81','#CCFF90'
+];
+const PHASE_NAMES=['FASE CIEGA','FASE PULSO','FASE SOMBRA','LA NOCHE'];
 
-// ── MAZE ─────────────────────────────────────────────────────────────
-function genMaze() {
-  const W = Array.from({length:ROWS}, ()=>
-    Array.from({length:COLS}, ()=>({N:true,S:true,E:true,W:true}))
-  );
-  const vis = Array.from({length:ROWS}, ()=>new Array(COLS).fill(false));
-  function sh(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a; }
-  function carve(x,y){
-    vis[y][x]=true;
-    for(const {dx,dy,w,o} of sh([{dx:0,dy:-1,w:'N',o:'S'},{dx:0,dy:1,w:'S',o:'N'},{dx:1,dy:0,w:'E',o:'W'},{dx:-1,dy:0,w:'W',o:'E'}])){
-      const nx=x+dx,ny=y+dy;
-      if(nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&!vis[ny][nx]){
-        W[y][x][w]=false; W[ny][nx][o]=false; carve(nx,ny);
+// ── SEEDED RNG (identical to server) ──────────────────────────────────────────
+function mulberry32(a){
+  return function(){
+    var t=a+=0x6D2B79F5;
+    t=Math.imul(t^t>>>15,t|1);
+    t^=t+Math.imul(t^t>>>7,t|61);
+    return((t^t>>>14)>>>0)/4294967296;
+  };
+}
+
+function genMaze(seed){
+  const rng=mulberry32(seed);
+  const W=Array.from({length:ROWS},()=>Array.from({length:COLS},()=>({n:true,s:true,e:true,w:true})));
+  const vis=Array.from({length:ROWS},()=>new Array(COLS).fill(false));
+  function sh(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+  function carve(r,c){
+    vis[r][c]=true;
+    for(const[dr,dc,wall,opp]of sh([[-1,0,'n','s'],[1,0,'s','n'],[0,1,'e','w'],[0,-1,'w','e']])){
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!vis[nr][nc]){
+        W[r][c][wall]=false;W[nr][nc][opp]=false;carve(nr,nc);
       }
     }
   }
-  carve(0,0); return W;
+  carve(0,0);return W;
 }
 
-// ── STATE ─────────────────────────────────────────────────────────────
-let maze,P,clocks,footprints,walls,echos;
-let gtime,spawnCD,over,goldCount,raf,lastT;
+// ── STATE ──────────────────────────────────────────────────────────────────────
+let ws=null;
+let curScreen='landing';
+let myDeviceId=null;
+let roomCode=null,hostId=null;
+let deviceSlots=0;           // 0=not set, 1 or 2
+let myPlayers=[];            // [{slot,id,color,flashUntil}]
+let selColors=[null,null];   // chosen colors per local slot
 
-const PHASES=[
-  {name:'FASE CIEGA',  rate:15,  end:180},
-  {name:'FASE PULSO',  rate:30,  end:360},
-  {name:'FASE SOMBRA', rate:60,  end:540},
-  {name:'LA NOCHE',    rate:120, end:Infinity},
-];
-const CTYPES=[
-  {type:'bronze',t:20, col:'#C8922A',w:60},
-  {type:'silver',t:45, col:'#8BAEC4',w:25},
-  {type:'gold',  t:90, col:'#D4A800',w:10},
-  {type:'shadow',t:-40,col:'#C8922A',w:5},
-];
+// Game state (from server)
+let maze=null;
+let srvPlayers=[];           // latest tick
+let srvClocks=[];
+let phase=0,gtime=0;
+let lobbyPlayers=[];
 
-function pickType(){
-  const avail=CTYPES.filter(c=>c.type!=='gold'||goldCount<2);
-  const tot=avail.reduce((s,c)=>s+c.w,0);
-  let r=Math.random()*tot;
-  for(const c of avail){r-=c.w; if(r<=0)return c;}
-  return avail[0];
+// Client-side visual effects (local-only)
+let footprints=[];           // {x,y,life}
+let echos=[];                // {x,y,life}
+let wallFlashes=[];          // {r,c,dir,life}
+let deathBursts=[];          // {x,y,r,life}
+let clockReveals=[];         // {cx,cy,startMs}
+let mazeRevealUntil=0;
+let phaseFlash=0;
+let latidos=[];              // {cx,cy,r,life,color}
+let clockParticles={};       // clockId→[particles]
+let clockTimers={};          // clockId→{pulseT,mirrorT}
+let prevClockIds=new Set();
+
+// Canvas
+const canvas=document.getElementById('c');
+const ctx=canvas.getContext('2d');
+
+let lastTs=0;
+let loopRunning=false;
+
+// ── WEBSOCKET ──────────────────────────────────────────────────────────────────
+function connectWS(){
+  const proto=location.protocol==='https:'?'wss:':'ws:';
+  ws=new WebSocket(`${proto}//${location.host}`);
+  ws.onmessage=e=>{let m;try{m=JSON.parse(e.data);}catch{return;}onMsg(m);};
+  ws.onclose=()=>setTimeout(connectWS,2000);
+  ws.onerror=()=>{};
 }
-function freeCell(){
-  const occ=[{x:P[0].x,y:P[0].y},{x:P[1].x,y:P[1].y},...clocks.map(c=>({x:c.x,y:c.y}))];
-  for(let t=0;t<300;t++){
-    const x=1+Math.floor(Math.random()*(COLS-2)),y=1+Math.floor(Math.random()*(ROWS-2));
-    if(!occ.some(o=>o.x===x&&o.y===y))return{x,y};
+function send(m){if(ws&&ws.readyState===1)ws.send(JSON.stringify(m));}
+
+function onMsg(m){
+  switch(m.type){
+
+    case 'init':
+      myDeviceId=m.deviceId;
+      break;
+
+    case 'roomCreated':
+      roomCode=m.code; hostId=m.host;
+      showScreen('lobby');
+      document.getElementById('lobby-code').textContent=m.code;
+      refreshStartBtn();
+      break;
+
+    case 'joinedRoom':
+      roomCode=m.code; hostId=m.host;
+      lobbyPlayers=m.players||[];
+      showScreen('lobby');
+      document.getElementById('lobby-code').textContent=m.code;
+      renderLobbyList();
+      refreshColorGrids();
+      refreshStartBtn();
+      break;
+
+    case 'lobbyUpdate':
+      lobbyPlayers=m.players||[];
+      hostId=m.host;
+      renderLobbyList();
+      refreshColorGrids();
+      refreshStartBtn();
+      break;
+
+    case 'colorTaken':
+      showErr('lobby-err','Color already taken!');
+      break;
+
+    case 'returnToLobby':
+      lobbyPlayers=m.players||[];
+      hostId=m.host;
+      showScreen('lobby');
+      document.getElementById('lobby-code').textContent=m.code;
+      renderLobbyList();
+      refreshColorGrids();
+      refreshStartBtn();
+      break;
+
+    case 'gameStart':
+      onGameStart(m);
+      break;
+
+    case 'tick':
+      onTick(m);
+      break;
+
+    case 'clockSpawned':
+      clockReveals.push({cx:m.clock.x,cy:m.clock.y,startMs:performance.now()});
+      break;
+
+    case 'clockCollected':
+      echos.push({x:m.clockX,y:m.clockY,life:1});
+      break;
+
+    case 'eliminated':
+      onEliminated(m.playerId);
+      break;
+
+    case 'phaseChange':
+      phase=m.phase;
+      phaseFlash=0.15;
+      document.getElementById('g-phase').textContent=PHASE_NAMES[m.phase]||'';
+      break;
+
+    case 'mazeBreath':
+      onMazeBreath(m.cells);
+      break;
+
+    case 'gameOver':
+      onGameOver(m);
+      break;
+
+    case 'wallHit':
+      wallFlashes.push({r:m.y,c:m.x,dir:m.dir,life:1});
+      const mp=myPlayers.find(p=>p.slot===m.slot);
+      if(mp)mp.flashUntil=performance.now()+300;
+      break;
+
+    case 'error':
+      showErr('land-err',m.msg);
+      showErr('lobby-err',m.msg);
+      break;
   }
-  return null;
 }
-function mkParticle(sx,sy){
-  const a=Math.random()*Math.PI*2, sp=0.25+Math.random()*0.45;
-  return{x:sx+.5,y:sy+.5,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,decay:.12+Math.random()*.12};
+
+// ── SCREEN MANAGEMENT ──────────────────────────────────────────────────────────
+function showScreen(name){
+  curScreen=name;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-'+name).classList.add('active');
 }
-function spawnClock(){
-  const pos=freeCell(); if(!pos)return;
-  const ct=pickType(); if(ct.type==='gold')goldCount++;
-  clocks.push({...pos,...ct,
-    pulse:Math.random()*8, mirror:Math.random()*15,
-    parts:Array.from({length:4},()=>mkParticle(pos.x,pos.y)),
-    rev:ct.type!=='shadow'
+
+function showErr(id,msg){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=msg;
+  setTimeout(()=>el.textContent='',3000);
+}
+
+// ── LANDING ────────────────────────────────────────────────────────────────────
+document.getElementById('btn-create').onclick=()=>send({type:'createRoom'});
+
+document.getElementById('btn-join').onclick=()=>{
+  const f=document.getElementById('join-form');
+  f.style.display=f.style.display==='none'?'flex':'none';
+  if(f.style.display==='flex')document.getElementById('code-input').focus();
+};
+
+document.getElementById('btn-join-go').onclick=joinRoom;
+document.getElementById('code-input').onkeydown=e=>{if(e.key==='Enter')joinRoom();};
+
+function joinRoom(){
+  const code=document.getElementById('code-input').value.trim();
+  if(code.length!==4){showErr('land-err','Enter a 4-digit code');return;}
+  send({type:'joinRoom',code});
+}
+
+// ── LOBBY ──────────────────────────────────────────────────────────────────────
+function refreshStartBtn(){
+  const iAmHost=myDeviceId&&hostId&&myDeviceId===hostId;
+  document.getElementById('start-btn').style.display=iAmHost?'block':'none';
+  document.getElementById('lobby-wait').style.display=iAmHost?'none':'block';
+}
+
+document.getElementById('slot1-btn').onclick=()=>setSlotMode(1);
+document.getElementById('slot2-btn').onclick=()=>setSlotMode(2);
+
+function setSlotMode(n){
+  deviceSlots=n;
+  document.getElementById('slot1-btn').classList.toggle('sel',n===1);
+  document.getElementById('slot2-btn').classList.toggle('sel',n===2);
+  document.getElementById('picker1-wrap').style.display=n===2?'block':'none';
+  document.getElementById('picker0-lbl').textContent=n===2?'Player 1 Color (WASD)':'Your Color';
+  if(n===1&&selColors[1]){
+    selColors[1]=null;
+    myPlayers=myPlayers.filter(p=>p.slot!==1);
+    send({type:'removeSlot',slot:1});
+  }
+  refreshColorGrids();
+}
+
+function buildColorGrid(slotIdx){
+  const grid=document.getElementById(`grid${slotIdx}`);
+  grid.innerHTML='';
+  PALETTE.forEach(color=>{
+    const sw=document.createElement('div');
+    sw.className='swatch';
+    sw.style.background=color;
+    sw.dataset.color=color;
+    sw.dataset.label=slotIdx===0?'1':'2';
+    sw.onclick=()=>pickColor(slotIdx,color,sw);
+    grid.appendChild(sw);
   });
 }
 
-function init(){
-  document.getElementById('end').classList.remove('on');
-  maze=genMaze(); gtime=0; spawnCD=8; over=false; goldCount=0;
-  clocks=[]; footprints=[]; walls=[]; echos=[]; lastT=null;
-  P=[
-    {x:1,  y:1,  col:'#00E5FF',glow:'#00E5FF',time:90,sc:0,alive:true,flash:0,cd:0,
-     up:'w',down:'s',left:'a',right:'d', death:null, label:'P1'},
-    {x:23, y:23, col:'#FF6B35',glow:'#FF6B35',time:90,sc:0,alive:true,flash:0,cd:0,
-     up:'ArrowUp',down:'ArrowDown',left:'ArrowLeft',right:'ArrowRight', death:null, label:'P2'},
-  ];
-  if(raf)cancelAnimationFrame(raf);
-  raf=requestAnimationFrame(loop);
+function pickColor(slot,color,sw){
+  if(sw.classList.contains('taken'))return;
+  selColors[slot]=color;
+  const existing=myPlayers.find(p=>p.slot===slot);
+  if(existing)existing.color=color;
+  else myPlayers.push({slot,id:null,color,flashUntil:0});
+  send({type:'setColor',slot,color});
+  refreshColorGrids();
 }
 
-// ── INPUT ─────────────────────────────────────────────────────────────
-const KD={};
-window.addEventListener('keydown',e=>{
-  KD[e.key]=true;
-  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','w','a','s','d'].includes(e.key)) e.preventDefault();
-});
-window.addEventListener('keyup',e=>{ KD[e.key]=false; });
+function refreshColorGrids(){
+  const takenByOthers=new Set(
+    lobbyPlayers.filter(p=>p.deviceId!==myDeviceId).map(p=>p.color)
+  );
+  [0,1].forEach(si=>{
+    const grid=document.getElementById(`grid${si}`);
+    if(!grid)return;
+    const other=selColors[1-si];
+    grid.querySelectorAll('.swatch').forEach(sw=>{
+      const c=sw.dataset.color;
+      const blocked=takenByOthers.has(c)||(other===c);
+      sw.classList.toggle('taken',blocked);
+      sw.classList.remove('picked');
+      if(selColors[si]===c)sw.classList.add('picked');
+    });
+  });
+}
 
-function tryMove(p,dx,dy){
-  if(!p.alive||p.cd>0) return;
-  const wk=dx===1?'E':dx===-1?'W':dy===1?'S':'N';
-  const ok=dx===1?'W':dx===-1?'E':dy===1?'N':'S';
-  const nx=p.x+dx,ny=p.y+dy;
-  if(nx<0||nx>=COLS||ny<0||ny>=ROWS)return;
-  if(maze[p.y][p.x][wk]){
-    p.flash=0.3; p.cd=0.15;
-    walls.push({x:p.x,y:p.y,d:wk,a:1},{x:nx,y:ny,d:ok,a:1});
-    return;
+function renderLobbyList(){
+  const list=document.getElementById('lobby-list');
+  list.innerHTML='';
+  lobbyPlayers.forEach(p=>{
+    const row=document.createElement('div');
+    row.className='p-row';
+    const isHost=p.deviceId===hostId;
+    row.innerHTML=`
+      <div class="p-dot-sm" style="background:${p.color};box-shadow:0 0 5px ${p.color}"></div>
+      <div class="p-name">${p.color}</div>
+      ${isHost?'<div class="host-tag">HOST</div>':''}
+    `;
+    list.appendChild(row);
+  });
+}
+
+document.getElementById('start-btn').onclick=()=>send({type:'startGame'});
+
+buildColorGrid(0);
+buildColorGrid(1);
+
+// ── GAME START ─────────────────────────────────────────────────────────────────
+function onGameStart(m){
+  maze=genMaze(m.seed);
+  srvPlayers=m.players||[];
+  srvClocks=[];phase=0;gtime=0;
+
+  // Match local player IDs from server player list
+  myPlayers.forEach(mp=>{
+    const sp=srvPlayers.find(p=>p.deviceId===myDeviceId&&p.slot===mp.slot);
+    if(sp)mp.id=sp.id;
+  });
+
+  // Reset effects
+  footprints=[];echos=[];wallFlashes=[];deathBursts=[];
+  clockReveals=[];clockParticles={};clockTimers={};
+  latidos=[];prevClockIds=new Set();phaseFlash=0;
+
+  // Maze reveal
+  mazeRevealUntil=performance.now()+500;
+
+  // Setup HUD
+  document.getElementById('g-phase').textContent=PHASE_NAMES[0];
+  setupHUD();
+
+  showScreen('game');
+  if(!loopRunning){loopRunning=true;lastTs=performance.now();requestAnimationFrame(gameLoop);}
+}
+
+function setupHUD(){
+  const mp0=myPlayers.find(p=>p.slot===0);
+  const mp1=myPlayers.find(p=>p.slot===1);
+  if(mp0){
+    document.getElementById('t0').style.color=mp0.color;
+    document.getElementById('t0').style.textShadow=`0 0 14px ${mp0.color}`;
   }
-  p.x=nx; p.y=ny; p.cd=0.11;
-  for(const cl of clocks){
-    if(Math.abs(cl.x-nx)+Math.abs(cl.y-ny)<=3)
-      footprints.push({x:nx,y:ny,a:0.55,decay:0.1});
+  if(mp1){
+    document.getElementById('hud1').style.display='block';
+    document.getElementById('t1').style.color=mp1.color;
+    document.getElementById('t1').style.textShadow=`0 0 14px ${mp1.color}`;
+  } else {
+    document.getElementById('hud1').style.display='none';
   }
 }
 
-// ── UPDATE ────────────────────────────────────────────────────────────
-function getPhase(){ for(let i=0;i<PHASES.length;i++){if(gtime<PHASES[i].end)return i;} return 3; }
+function onTick(m){
+  srvPlayers=m.players||[];
+  srvClocks=m.clocks||[];
+  phase=m.phase;gtime=m.gtime;
 
-function update(dt){
-  gtime+=dt;
-  for(const p of P){
-    p.cd=Math.max(0,p.cd-dt);
-    p.flash=Math.max(0,p.flash-dt);
-    if(!p.alive)continue;
-    p.time-=dt;
-    if(p.time<=0){
-      p.time=0; p.alive=false;
-      p.death={r:0,a:1.0,x:p.x,y:p.y};
+  // Sync clock effect state
+  const newIds=new Set(srvClocks.map(c=>c.id));
+  for(const id of prevClockIds){
+    if(!newIds.has(id)){delete clockParticles[id];delete clockTimers[id];}
+  }
+  for(const clock of srvClocks){
+    if(!clockParticles[clock.id]){
+      clockParticles[clock.id]=[];
+      for(let i=0;i<4;i++)clockParticles[clock.id].push(mkParticle(clock.x,clock.y));
+      clockTimers[clock.id]={pulseT:0,mirrorT:Math.random()*15};
+    }
+  }
+  prevClockIds=newIds;
+
+  updateHUD();
+  updateSidebar();
+}
+
+function onEliminated(playerId){
+  const sp=srvPlayers.find(p=>p.id===playerId);
+  if(sp){
+    deathBursts.push({x:ccx(sp.x),y:ccy(sp.y),r:0,life:1});
+    const isMe=myPlayers.some(mp=>mp.id===playerId);
+    if(isMe)showElimMsg('YOU WERE ELIMINATED');
+    else showElimMsg(`P${srvPlayers.indexOf(sp)+1} ELIMINATED`);
+  }
+}
+
+function showElimMsg(txt){
+  const el=document.getElementById('elim-msg');
+  el.textContent=txt;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+
+function onMazeBreath(cells){
+  if(!maze)return;
+  for(const cell of cells){
+    const{r,c,side,open}=cell;
+    if(side==='e'){
+      maze[r][c].e=!open;
+      if(c+1<COLS)maze[r][c+1].w=!open;
+    } else if(side==='s'){
+      maze[r][c].s=!open;
+      if(r+1<ROWS)maze[r+1][c].n=!open;
+    }
+    wallFlashes.push({r,c,dir:side,life:0.6});
+  }
+}
+
+function onGameOver(m){
+  loopRunning=false;
+  const winner=srvPlayers.find(p=>p.id===m.winner)||
+    m.stats.find(s=>s.id===m.winner);
+  const titleEl=document.getElementById('end-title');
+  const subEl=document.getElementById('end-sub');
+  if(winner){
+    titleEl.textContent='WINNER';
+    titleEl.style.color=winner.color;
+    titleEl.style.textShadow=`0 0 40px ${winner.color}`;
+    const isMe=myPlayers.some(mp=>mp.id===winner.id);
+    subEl.textContent=isMe?'You survived.':'They survived.';
+  } else {
+    titleEl.textContent='EMPATE';
+    titleEl.style.color='#fff';
+    titleEl.style.textShadow='0 0 40px #fff';
+    subEl.textContent='Both timers ran out.';
+  }
+  const statsEl=document.getElementById('end-stats');
+  statsEl.innerHTML=(m.stats||[]).map(s=>{
+    const isW=s.id===m.winner;
+    return `<div class="end-row">
+      <div class="end-dot" style="background:${s.color};box-shadow:0 0 5px ${s.color}"></div>
+      <span style="color:${s.color}">${fmt(s.time)}</span>
+      <span style="color:#333">·</span>
+      <span style="color:#666">${s.score} clocks</span>
+      ${isW?'<span class="win-tag">WINNER</span>':''}
+    </div>`;
+  }).join('');
+
+  const iAmHost=myDeviceId&&hostId&&myDeviceId===hostId;
+  document.getElementById('play-again').style.display=iAmHost?'block':'none';
+  document.getElementById('end-wait').style.display=iAmHost?'none':'block';
+  showScreen('end');
+}
+
+document.getElementById('play-again').onclick=()=>send({type:'playAgain'});
+
+// ── HUD ────────────────────────────────────────────────────────────────────────
+function fmt(s){
+  const t=Math.max(0,s);
+  const m=Math.floor(t/60),sec=Math.floor(t%60);
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function updateHUD(){
+  const now=performance.now();
+  myPlayers.forEach((mp,i)=>{
+    const sp=srvPlayers.find(p=>p.id===mp.id);
+    if(!sp)return;
+    const te=document.getElementById(`t${i}`);
+    const se=document.getElementById(`sc${i}`);
+    if(te)te.textContent=fmt(sp.time);
+    if(se)se.textContent=`${sp.score} clocks`;
+    if(te&&sp.alive&&sp.time<20)te.style.opacity=Math.sin(now/120)>0?'1':'0.3';
+    else if(te)te.style.opacity='1';
+  });
+  document.getElementById('g-phase').textContent=PHASE_NAMES[phase]||'';
+}
+
+function updateSidebar(){
+  document.getElementById('sidebar').innerHTML=srvPlayers.map(p=>{
+    const isMe=myPlayers.some(mp=>mp.id===p.id);
+    return `<div class="sb-row${p.alive?'':' dead'}">
+      <div class="sb-dot" style="background:${p.color};${p.alive?`box-shadow:0 0 4px ${p.color}`:''}"></div>
+      <div class="sb-t" style="color:${p.alive?p.color:'#1a1a1a'}">${fmt(p.time)}</div>
+      <div class="sb-sc">${p.score}⏱</div>
+    </div>`;
+  }).join('');
+}
+
+// ── PARTICLES ──────────────────────────────────────────────────────────────────
+function mkParticle(cx,cy){
+  const ang=Math.random()*Math.PI*2,spd=0.25+Math.random()*0.4;
+  return{
+    px:cx+.5,py:cy+.5,vx:Math.cos(ang)*spd,vy:Math.sin(ang)*spd,
+    life:1,decay:0.12+Math.random()*0.15,
+    maxDist:2+Math.random()*2,ox:cx,oy:cy
+  };
+}
+
+function updateParticles(dt){
+  for(const clock of srvClocks){
+    const parts=clockParticles[clock.id];
+    if(!parts)continue;
+    for(let i=0;i<parts.length;i++){
+      const p=parts[i];
+      p.life-=p.decay*dt;
+      const nx=p.px+p.vx*dt,ny=p.py+p.vy*dt;
+      const dist=Math.hypot(nx-p.ox-.5,ny-p.oy-.5);
+      let blocked=false;
+      if(maze){
+        const gc=Math.floor(p.px),gr=Math.floor(p.py);
+        const nc=Math.floor(nx),nr=Math.floor(ny);
+        if(nc!==gc&&gc>=0&&gc<COLS&&gr>=0&&gr<ROWS){
+          if(maze[gr][gc][nc>gc?'e':'w'])blocked=true;
+        }
+        if(nr!==gr&&!blocked&&gc>=0&&gc<COLS&&gr>=0&&gr<ROWS){
+          if(maze[gr][gc][nr>gr?'s':'n'])blocked=true;
+        }
+      }
+      if(!blocked&&dist<p.maxDist){p.px=nx;p.py=ny;}
+      else p.life=0;
+      if(p.life<=0)parts[i]=mkParticle(clock.x,clock.y);
+    }
+  }
+}
+
+// ── RENDER HELPERS ─────────────────────────────────────────────────────────────
+function ccx(x){return x*CS+CS/2;}
+function ccy(y){return y*CS+CS/2;}
+
+function drawWall(r,c,dir,alpha){
+  if(!maze||r<0||r>=ROWS||c<0||c>=COLS)return;
+  const x0=c*CS,y0=r*CS;
+  ctx.save();ctx.globalAlpha=alpha;
+  ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.lineCap='round';
+  ctx.beginPath();
+  if(dir==='n'){ctx.moveTo(x0,y0);ctx.lineTo(x0+CS,y0);}
+  else if(dir==='s'){ctx.moveTo(x0,y0+CS);ctx.lineTo(x0+CS,y0+CS);}
+  else if(dir==='w'){ctx.moveTo(x0,y0);ctx.lineTo(x0,y0+CS);}
+  else if(dir==='e'){ctx.moveTo(x0+CS,y0);ctx.lineTo(x0+CS,y0+CS);}
+  ctx.stroke();ctx.restore();
+}
+
+function drawMazeSection(sx,sy,w,h,alpha){
+  if(!maze)return;
+  ctx.save();ctx.globalAlpha=alpha;
+  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.lineCap='square';
+  for(let r=Math.max(0,sy);r<Math.min(ROWS,sy+h);r++){
+    for(let c=Math.max(0,sx);c<Math.min(COLS,sx+w);c++){
+      const cell=maze[r][c];
+      const x0=c*CS,y0=r*CS;
+      ctx.beginPath();
+      if(cell.n){ctx.moveTo(x0,y0);ctx.lineTo(x0+CS,y0);}
+      if(cell.s){ctx.moveTo(x0,y0+CS);ctx.lineTo(x0+CS,y0+CS);}
+      if(cell.w){ctx.moveTo(x0,y0);ctx.lineTo(x0,y0+CS);}
+      if(cell.e){ctx.moveTo(x0+CS,y0);ctx.lineTo(x0+CS,y0+CS);}
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function nearestClockDist(sp){
+  let min=Infinity;
+  for(const c of srvClocks){
+    const d=Math.abs(sp.x-c.x)+Math.abs(sp.y-c.y);
+    if(d<min)min=d;
+  }
+  return min;
+}
+
+function lerpColor(a,b,t){
+  const ar=parseInt(a.slice(1,3),16),ag=parseInt(a.slice(3,5),16),ab=parseInt(a.slice(5,7),16);
+  const br=parseInt(b.slice(1,3),16),bg=parseInt(b.slice(3,5),16),bb=parseInt(b.slice(5,7),16);
+  const r=Math.round(ar+(br-ar)*t),g=Math.round(ag+(bg-ag)*t),bv=Math.round(ab+(bb-ab)*t);
+  return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${bv.toString(16).padStart(2,'0')}`;
+}
+
+function proximityColor(sp,now){
+  const d=nearestClockDist(sp);
+  if(d<=1)return Math.sin(now/60)>0?'#ffffff':sp.color;
+  if(d<=4)return lerpColor(sp.color,'#ffffff',(1-d/4)*0.75);
+  return sp.color;
+}
+
+// ── GAME LOOP ──────────────────────────────────────────────────────────────────
+function gameLoop(ts){
+  if(!loopRunning){return;}
+  const dt=Math.min((ts-lastTs)/1000,0.05);
+  lastTs=ts;
+  update(dt,ts);
+  draw(ts);
+  requestAnimationFrame(gameLoop);
+}
+
+function update(dt,now){
+  // Footprints
+  for(let i=footprints.length-1;i>=0;i--){
+    footprints[i].life-=dt/5;
+    if(footprints[i].life<=0)footprints.splice(i,1);
+  }
+  const myLocalSrv=myPlayers.map(mp=>srvPlayers.find(p=>p.id===mp.id)).filter(Boolean);
+  for(const sp of myLocalSrv){
+    if(!sp.alive)continue;
+    for(const clock of srvClocks){
+      const d=Math.abs(sp.x-clock.x)+Math.abs(sp.y-clock.y);
+      if(d<=3&&!footprints.some(f=>f.x===sp.x&&f.y===sp.y))
+        footprints.push({x:sp.x,y:sp.y,life:1});
     }
   }
 
-  // Input
-  if(KD[P[0].up])   tryMove(P[0], 0,-1);
-  if(KD[P[0].down]) tryMove(P[0], 0, 1);
-  if(KD[P[0].left]) tryMove(P[0],-1, 0);
-  if(KD[P[0].right])tryMove(P[0], 1, 0);
-  if(KD[P[1].up])   tryMove(P[1], 0,-1);
-  if(KD[P[1].down]) tryMove(P[1], 0, 1);
-  if(KD[P[1].left]) tryMove(P[1],-1, 0);
-  if(KD[P[1].right])tryMove(P[1], 1, 0);
+  // Echos
+  for(let i=echos.length-1;i>=0;i--){echos[i].life-=dt/10;if(echos[i].life<=0)echos.splice(i,1);}
+  // Wall flashes
+  for(let i=wallFlashes.length-1;i>=0;i--){wallFlashes[i].life-=dt/1.5;if(wallFlashes[i].life<=0)wallFlashes.splice(i,1);}
+  // Death bursts
+  for(let i=deathBursts.length-1;i>=0;i--){
+    deathBursts[i].r+=80*dt;deathBursts[i].life-=1.8*dt;
+    if(deathBursts[i].life<=0)deathBursts.splice(i,1);
+  }
+  // Clock reveals
+  clockReveals=clockReveals.filter(r=>now-r.startMs<1500);
 
-  // Clock pickup
-  for(const p of P){
-    if(!p.alive)continue;
-    for(let i=clocks.length-1;i>=0;i--){
-      const cl=clocks[i];
-      if(cl.x===p.x&&cl.y===p.y){
-        p.time=Math.max(0,p.time+cl.t); p.sc++;
-        echos.push({x:cl.x,y:cl.y,a:0.6,decay:0.05});
-        clocks.splice(i,1);
+  // Clock timers → latidos
+  for(const clock of srvClocks){
+    const ct=clockTimers[clock.id];
+    if(!ct)continue;
+    ct.pulseT+=dt;ct.mirrorT+=dt;
+    if(ct.pulseT>=8){
+      ct.pulseT-=8;
+      const anyNear=myLocalSrv.some(sp=>Math.abs(sp.x-clock.x)+Math.abs(sp.y-clock.y)<=2);
+      if(anyNear)latidos.push({cx:clock.x,cy:clock.y,r:0,life:1,color:clock.color});
+    }
+  }
+  // Latidos
+  for(let i=latidos.length-1;i>=0;i--){
+    latidos[i].r+=CS*2*dt;latidos[i].life-=dt/2;
+    if(latidos[i].life<=0)latidos.splice(i,1);
+  }
+
+  // Particles
+  updateParticles(dt);
+
+  // Phase flash
+  phaseFlash=Math.max(0,phaseFlash-dt*2);
+}
+
+function draw(now){
+  ctx.fillStyle='#000';
+  ctx.fillRect(0,0,600,600);
+
+  // Initial full maze reveal
+  if(now<mazeRevealUntil)drawMazeSection(0,0,COLS,ROWS,0.8);
+
+  // Clock-spawn 5×5 reveals
+  for(const rev of clockReveals){
+    const age=now-rev.startMs;
+    const alpha=Math.max(0,1-age/1500)*0.65;
+    if(alpha>0)drawMazeSection(rev.cx-2,rev.cy-2,5,5,alpha);
+  }
+
+  // Wall flashes
+  for(const wf of wallFlashes)drawWall(wf.r,wf.c,wf.dir,wf.life);
+
+  // Echos
+  ctx.save();
+  for(const e of echos){
+    ctx.globalAlpha=e.life*0.35;
+    ctx.strokeStyle='#fff';ctx.lineWidth=1;
+    ctx.beginPath();ctx.arc(ccx(e.x),ccy(e.y),10,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+
+  // Footprints
+  ctx.save();
+  for(const fp of footprints){
+    ctx.globalAlpha=fp.life*0.25;ctx.fillStyle='#fff';
+    ctx.fillRect(fp.x*CS+6,fp.y*CS+6,CS-12,CS-12);
+  }
+  ctx.restore();
+
+  const myLocalSrv=myPlayers.map(mp=>srvPlayers.find(p=>p.id===mp.id)).filter(Boolean);
+
+  // Clocks + hints
+  for(const clock of srvClocks){
+    const ct=clockTimers[clock.id];
+    const cx=ccx(clock.x),cy=ccy(clock.y);
+
+    // Espejo fugaz: cell above flashes every 15s for 300ms
+    if(ct){
+      const mp=ct.mirrorT%15;
+      if(mp<0.3&&clock.y>0){
+        ctx.save();
+        ctx.globalAlpha=(1-mp/0.3)*0.4;
+        ctx.fillStyle='#fff';
+        ctx.fillRect(clock.x*CS,( clock.y-1)*CS,CS,CS);
+        ctx.restore();
+      }
+    }
+
+    // Latido rings (for this clock)
+    for(const lat of latidos){
+      if(lat.cx!==clock.x||lat.cy!==clock.y)continue;
+      ctx.save();
+      ctx.globalAlpha=lat.life*0.35;
+      ctx.strokeStyle=lat.color;ctx.lineWidth=1;
+      ctx.shadowBlur=8;ctx.shadowColor=lat.color;
+      ctx.beginPath();ctx.arc(cx,cy,lat.r,0,Math.PI*2);ctx.stroke();
+      ctx.restore();
+    }
+
+    // Shadow reveal check (local players only)
+    const revealed=clock.type!=='shadow'||
+      myLocalSrv.some(sp=>Math.abs(sp.x-clock.x)+Math.abs(sp.y-clock.y)<=1);
+
+    // Draw clock body
+    ctx.save();
+    ctx.shadowBlur=18;ctx.shadowColor=clock.color;
+    ctx.fillStyle=clock.color;
+    ctx.beginPath();ctx.arc(cx,cy,5,0,Math.PI*2);ctx.fill();
+    // Shadow erratic pulse when revealed
+    if(clock.type==='shadow'&&revealed){
+      ctx.globalAlpha=0.5+0.5*Math.sin(now/55);
+      ctx.strokeStyle='#ff0000';ctx.lineWidth=2;
+      ctx.shadowBlur=14;ctx.shadowColor='#ff0000';
+      ctx.beginPath();ctx.arc(cx,cy,8+2*Math.sin(now/55*3),0,Math.PI*2);ctx.stroke();
+    }
+    ctx.restore();
+
+    // Particles (only if a local player is nearby)
+    const anyNear=myLocalSrv.some(sp=>Math.abs(sp.x-clock.x)+Math.abs(sp.y-clock.y)<=5);
+    if(anyNear){
+      const parts=clockParticles[clock.id];
+      if(parts){
+        ctx.save();
+        for(const p of parts){
+          ctx.globalAlpha=p.life*0.65;
+          ctx.fillStyle=clock.color;ctx.shadowBlur=4;ctx.shadowColor=clock.color;
+          ctx.beginPath();ctx.arc(p.px*CS,p.py*CS,1.5,0,Math.PI*2);ctx.fill();
+        }
+        ctx.restore();
       }
     }
   }
 
-  // Spawn
-  spawnCD-=dt;
-  if(spawnCD<=0){ spawnClock(); spawnCD=PHASES[getPhase()].rate; }
-
-  // Clock update
-  for(const cl of clocks){
-    cl.pulse+=dt; cl.mirror+=dt;
-    for(let i=0;i<cl.parts.length;i++){
-      const pt=cl.parts[i];
-      pt.x+=pt.vx*dt; pt.y+=pt.vy*dt; pt.life-=pt.decay*dt;
-      if(pt.life<=0) cl.parts[i]=mkParticle(cl.x,cl.y);
+  // Players
+  for(const sp of srvPlayers){
+    if(!sp.alive)continue;
+    const cx=ccx(sp.x),cy=ccy(sp.y);
+    const isLocal=myPlayers.some(mp=>mp.id===sp.id);
+    let dotColor=sp.color;
+    if(isLocal){
+      dotColor=proximityColor(sp,now);
+      const mp=myPlayers.find(p=>p.id===sp.id);
+      if(mp&&mp.flashUntil&&now<mp.flashUntil)dotColor='#ff2222';
     }
-    if(cl.type==='shadow'){
-      cl.rev=(Math.abs(cl.x-P[0].x)+Math.abs(cl.y-P[0].y)<=1)||
-             (Math.abs(cl.x-P[1].x)+Math.abs(cl.y-P[1].y)<=1);
-    }
-  }
-
-  // Decay arrays
-  for(const w of walls) w.a-=dt*0.65;
-  walls=walls.filter(w=>w.a>0);
-  for(const f of footprints) f.a-=f.decay*dt;
-  footprints=footprints.filter(f=>f.a>0);
-  for(const e of echos) e.a-=e.decay*dt;
-  echos=echos.filter(e=>e.a>0);
-
-  // Death burst
-  for(const p of P){
-    if(!p.death)continue;
-    p.death.r+=dt*80; p.death.a-=dt*1.8;
-    if(p.death.a<=0) p.death=null;
-  }
-
-  // HUD
-  const ph=getPhase();
-  document.getElementById('phase').textContent=PHASES[ph].name;
-  document.getElementById('t1').textContent=fmt(P[0].time);
-  document.getElementById('t2').textContent=fmt(P[1].time);
-  document.querySelector('.p1i .tsm').textContent=`WASD · ${P[0].sc} relojes`;
-  document.querySelector('.p2i .tsm').textContent=`${P[1].sc} relojes · ← → ↑ ↓`;
-
-  // End check
-  const alive=P.filter(p=>p.alive);
-  if(alive.length<=1&&!over){
-    over=true;
-    setTimeout(()=>showEnd(alive[0]),700);
-  }
-}
-
-function fmt(s){
-  s=Math.max(0,s);
-  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-}
-function showEnd(w){
-  const el=document.getElementById('end');
-  const title=document.getElementById('end-title');
-  const det=document.getElementById('end-details');
-  if(!w){ title.style.color='#555'; title.textContent='EMPATE'; }
-  else {
-    title.style.color=w.col;
-    title.textContent=w===P[0]?'P1 GANA':'P2 GANA';
-  }
-  det.innerHTML=
-    `<span style="color:#00E5FF">P1</span> — ${fmt(P[0].time)} restante · ${P[0].sc} relojes<br>`+
-    `<span style="color:#FF6B35">P2</span> — ${fmt(P[1].time)} restante · ${P[1].sc} relojes`;
-  el.classList.add('on');
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────
-function ccx(x){ return x*CS+CS/2; }
-function ccy(y){ return y*CS+CS/2; }
-function hex3(h){ return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
-
-function proximityColor(p){
-  let md=999;
-  for(const cl of clocks){ const d=Math.abs(cl.x-p.x)+Math.abs(cl.y-p.y); if(d<md)md=d; }
-  if(clocks.length===0) return p.col;
-  if(md<=1) return '#FFFFFF';
-  if(md<=4){
-    const t=(1-(md-1)/4)*0.75;
-    const [r1,g1,b1]=hex3(p.col);
-    const r=Math.round(r1+(255-r1)*t),g=Math.round(g1+(255-g1)*t),b=Math.round(b1+(255-b1)*t);
-    return`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-  }
-  return p.col;
-}
-
-function draw(){
-  cx.fillStyle='#000'; cx.fillRect(0,0,cv.width,cv.height);
-
-  // Outer border
-  cx.strokeStyle='#0d0d0d'; cx.lineWidth=1;
-  cx.strokeRect(0,0,cv.width,cv.height);
-
-  // ── Echos ──
-  for(const e of echos){
-    cx.beginPath(); cx.arc(ccx(e.x),ccy(e.y),9,0,Math.PI*2);
-    cx.strokeStyle=`rgba(255,255,255,${e.a})`; cx.lineWidth=1; cx.stroke();
-  }
-
-  // ── Footprints ──
-  for(const f of footprints){
-    cx.fillStyle=`rgba(255,255,255,${f.a*0.3})`;
-    cx.fillRect(f.x*CS+7,f.y*CS+7,CS-14,CS-14);
-  }
-
-  // ── Clocks + hints ──
-  for(const cl of clocks){
-    const px=ccx(cl.x), py=ccy(cl.y);
-    const dc=(cl.type==='shadow'&&!cl.rev)?'#C8922A':cl.col;
-    const [dr,dg,db]=hex3(dc);
-
-    // Hint 6: Espejo fugaz
-    const mp=cl.mirror%15;
-    if(mp<0.35&&cl.y>0){
-      const a=(1-mp/0.35)*0.45;
-      cx.fillStyle=`rgba(255,255,255,${a})`;
-      cx.fillRect(cl.x*CS,( cl.y-1)*CS,CS,CS);
-    }
-
-    // Hint 2: Latido
-    const pp=cl.pulse%8;
-    if(pp<2.8){
-      const prog=pp/2.8;
-      cx.beginPath();
-      cx.arc(px,py,prog*CS*2.8,0,Math.PI*2);
-      cx.strokeStyle=`rgba(${dr},${dg},${db},${(1-prog)*0.55})`;
-      cx.lineWidth=1.5; cx.stroke();
-    }
-
-    // Clock body
-    cx.shadowBlur=18; cx.shadowColor=dc;
-    cx.beginPath(); cx.arc(px,py,5,0,Math.PI*2);
-    cx.fillStyle=dc; cx.fill();
-    cx.shadowBlur=0;
-
-    // Shadow clock erratic reveal
-    if(cl.type==='shadow'&&cl.rev){
-      const er=Math.sin(gtime*18)*0.5+0.5;
-      cx.beginPath(); cx.arc(px,py,5+er*7,0,Math.PI*2);
-      cx.strokeStyle=`rgba(200,0,0,${er*0.9})`; cx.lineWidth=1.5; cx.stroke();
-    }
-
-    // Hint 3: Partículas
-    for(const pt of cl.parts){
-      cx.beginPath();
-      cx.arc(pt.x*CS, pt.y*CS, 1.5, 0, Math.PI*2);
-      cx.fillStyle=`rgba(${dr},${dg},${db},${pt.life*0.65})`;
-      cx.fill();
-    }
-  }
-
-  // ── Revealed walls ──
-  for(const w of walls){
-    cx.strokeStyle=`rgba(255,255,255,${Math.max(0,w.a)})`;
-    cx.lineWidth=2.5; cx.lineCap='round';
-    const wx=w.x*CS, wy=w.y*CS;
-    cx.beginPath();
-    if(w.d==='N'){cx.moveTo(wx,wy);cx.lineTo(wx+CS,wy);}
-    else if(w.d==='S'){cx.moveTo(wx,wy+CS);cx.lineTo(wx+CS,wy+CS);}
-    else if(w.d==='W'){cx.moveTo(wx,wy);cx.lineTo(wx,wy+CS);}
-    else{cx.moveTo(wx+CS,wy);cx.lineTo(wx+CS,wy+CS);}
-    cx.stroke();
-  }
-
-  // ── Players ──
-  for(const p of P){
-    if(!p.alive)continue;
-    const px=ccx(p.x), py=ccy(p.y);
-    const dotCol=p.flash>0?'#FF2222':proximityColor(p);
-
-    cx.shadowBlur=22; cx.shadowColor=p.flash>0?'#FF0000':p.glow;
-    cx.beginPath(); cx.arc(px,py,7,0,Math.PI*2);
-    cx.fillStyle=dotCol; cx.fill();
-    cx.shadowBlur=0;
-
+    ctx.save();
+    ctx.shadowBlur=22;ctx.shadowColor=dotColor;ctx.fillStyle=dotColor;
+    ctx.beginPath();ctx.arc(cx,cy,7,0,Math.PI*2);ctx.fill();
     // Timer arc
-    const frac=Math.min(p.time/90,1);
-    const arcCol=p.time<20?'#FF3333':p.col;
-    cx.beginPath();
-    cx.arc(px,py,11,-Math.PI/2,-Math.PI/2+Math.PI*2*frac);
-    cx.strokeStyle=arcCol; cx.lineWidth=2; cx.stroke();
-
-    // Low time pulse
-    if(p.time<15&&Math.floor(gtime*5)%2===0){
-      cx.beginPath(); cx.arc(px,py,15,0,Math.PI*2);
-      cx.strokeStyle='rgba(255,50,50,0.35)'; cx.lineWidth=1; cx.stroke();
+    const ratio=Math.max(0,sp.time/60);
+    const arcCol=sp.time<20?'#ff2222':sp.color;
+    ctx.strokeStyle=arcCol;ctx.lineWidth=2;
+    ctx.shadowBlur=8;ctx.shadowColor=arcCol;
+    ctx.beginPath();ctx.arc(cx,cy,11,-Math.PI/2,-Math.PI/2+ratio*Math.PI*2);ctx.stroke();
+    // Low-time pulse ring
+    if(sp.alive&&sp.time<15){
+      ctx.globalAlpha=Math.abs(Math.sin(now/100))*0.5;
+      ctx.strokeStyle='#ff2222';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(cx,cy,15,0,Math.PI*2);ctx.stroke();
     }
-
     // Label
-    cx.fillStyle=p.col; cx.font='9px Courier New'; cx.textAlign='center';
-    cx.fillText(p.label,px,py-17);
+    ctx.globalAlpha=0.7;ctx.fillStyle='#fff';ctx.shadowBlur=0;
+    ctx.font='7px "Courier New"';ctx.textAlign='center';
+    const idx=srvPlayers.indexOf(sp);
+    ctx.fillText(`P${idx+1}`,cx,cy-15);
+    ctx.restore();
   }
 
-  // ── Death bursts ──
-  for(const p of P){
-    if(!p.death)continue;
-    cx.beginPath();
-    cx.arc(ccx(p.death.x),ccy(p.death.y),p.death.r,0,Math.PI*2);
-    cx.strokeStyle=`rgba(255,255,255,${Math.max(0,p.death.a)})`;
-    cx.lineWidth=2; cx.stroke();
+  // Death bursts
+  ctx.save();
+  for(const db of deathBursts){
+    ctx.globalAlpha=db.life*0.7;
+    ctx.strokeStyle='#fff';ctx.lineWidth=2;
+    ctx.shadowBlur=12;ctx.shadowColor='#fff';
+    ctx.beginPath();ctx.arc(db.x,db.y,db.r,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.restore();
+
+  // Phase flash overlay
+  if(phaseFlash>0){
+    ctx.save();ctx.globalAlpha=phaseFlash;
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,600,600);
+    ctx.restore();
   }
 }
 
-// ── LOOP ─────────────────────────────────────────────────────────────
-function loop(ts){
-  if(!lastT)lastT=ts;
-  const dt=Math.min((ts-lastT)/1000,0.05); lastT=ts;
-  if(!over) update(dt);
-  draw();
-  raf=requestAnimationFrame(loop);
-}
+// ── INPUT ──────────────────────────────────────────────────────────────────────
+const KEY_MAP={
+  'w':{slot:0,dir:'n'},'s':{slot:0,dir:'s'},
+  'a':{slot:0,dir:'w'},'d':{slot:0,dir:'e'},
+  'ArrowUp':{slot:1,dir:'n'},'ArrowDown':{slot:1,dir:'s'},
+  'ArrowLeft':{slot:1,dir:'w'},'ArrowRight':{slot:1,dir:'e'}
+};
+const keyCooldowns={};
 
-init();
+window.addEventListener('keydown',e=>{
+  if(curScreen!=='game')return;
+  const k=KEY_MAP[e.key];
+  if(!k)return;
+  e.preventDefault();
+  const mp=myPlayers.find(p=>p.slot===k.slot);
+  if(!mp||!mp.id)return;
+  const sp=srvPlayers.find(p=>p.id===mp.id);
+  if(!sp||!sp.alive)return;
+  const now=performance.now();
+  if(keyCooldowns[k.slot]&&now<keyCooldowns[k.slot])return;
+  keyCooldowns[k.slot]=now+110;
+  send({type:'move',slot:k.slot,dir:k.dir});
+});
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+connectWS();
 </script>
 </body>
 </html>
