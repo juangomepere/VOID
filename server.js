@@ -277,7 +277,8 @@ function tickGame(room, dt) {
   broadcastToRoom(room, {
     type: 'tick',
     players: [...room.players.values()].map(p => ({
-      id: p.id, x: p.x, y: p.y, time: p.time, score: p.score, alive: p.alive
+      id: p.id, deviceId: p.deviceId, slot: p.slot, color: p.color,
+      x: p.x, y: p.y, time: p.time, score: p.score, alive: p.alive
     })),
     clocks: gs.clocks,
     phase: gs.phase,

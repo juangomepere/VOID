@@ -6,7 +6,7 @@
 <title>VOID</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#000;color:#fff;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+body{background:#000;color:#fff;font-family:'Courier New',monospace;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow-y:auto}
 .screen{display:none;flex-direction:column;align-items:center}
 .screen.active{display:flex}
 /* ── LANDING ── */
@@ -20,7 +20,7 @@ body{background:#000;color:#fff;font-family:'Courier New',monospace;min-height:1
 #join-form input{background:transparent;border:1px solid #2a2a2a;color:#fff;font-family:'Courier New',monospace;font-size:28px;letter-spacing:10px;padding:10px 20px;text-align:center;width:220px;transition:border-color .2s}
 #join-form input:focus{outline:none;border-color:#555}
 /* ── LOBBY ── */
-#s-lobby{gap:22px;max-width:640px;width:100%;padding:40px 24px}
+#s-lobby{gap:22px;max-width:640px;width:100%;padding:40px 24px 60px}
 .lbl{font-size:9px;letter-spacing:4px;color:#333;text-transform:uppercase;margin-bottom:6px}
 .room-code{font-size:52px;letter-spacing:14px;color:#fff;text-shadow:0 0 24px rgba(255,255,255,.3)}
 .slot-row{display:flex;gap:10px}
