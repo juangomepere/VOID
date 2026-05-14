@@ -18,10 +18,10 @@ const PALETTE = [
 ];
 
 const PHASES = [
-  { name: 'FASE CIEGA',  rate: 15,  end: 180 },
-  { name: 'FASE PULSO',  rate: 30,  end: 360 },
-  { name: 'FASE SOMBRA', rate: 60,  end: 540 },
-  { name: 'LA NOCHE',    rate: 120, end: Infinity }
+  { name: 'FASE CIEGA',  rate: 8,   end: 180 },
+  { name: 'FASE PULSO',  rate: 15,  end: 360 },
+  { name: 'FASE SOMBRA', rate: 30,  end: 540 },
+  { name: 'LA NOCHE',    rate: 60,  end: Infinity }
 ];
 
 const CLOCK_TYPES = [

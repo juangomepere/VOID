@@ -202,6 +202,7 @@ let echos=[];                // {x,y,life}
 let wallFlashes=[];          // {r,c,dir,life}
 let deathBursts=[];          // {x,y,r,life}
 let clockReveals=[];         // {cx,cy,startMs}
+let areaReveals=[];          // {x,y,color,startMs} — 5×5 hint every 20s, local only
 let mazeRevealUntil=0;
 let phaseFlash=0;
 let latidos=[];              // {cx,cy,r,life,color}
@@ -452,11 +453,11 @@ function onGameStart(m){
 
   // Reset effects
   footprints=[];echos=[];wallFlashes=[];deathBursts=[];
-  clockReveals=[];clockParticles={};clockTimers={};
+  clockReveals=[];areaReveals=[];clockParticles={};clockTimers={};
   latidos=[];prevClockIds=new Set();phaseFlash=0;
 
-  // Maze reveal
-  mazeRevealUntil=performance.now()+500;
+  // Maze reveal (2 seconds at start)
+  mazeRevealUntil=performance.now()+2000;
 
   // Setup HUD
   document.getElementById('g-phase').textContent=PHASE_NAMES[0];
@@ -483,9 +484,19 @@ function setupHUD(){
 }
 
 function onTick(m){
+  const prevGtime=gtime;
   srvPlayers=m.players||[];
   srvClocks=m.clocks||[];
   phase=m.phase;gtime=m.gtime;
+
+  // 20-second area reveal for each local alive player
+  if(Math.floor(gtime/20)>Math.floor(prevGtime/20)){
+    const now=performance.now();
+    const myLocalSrv=myPlayers.map(mp=>srvPlayers.find(p=>p.id===mp.id)).filter(Boolean);
+    for(const sp of myLocalSrv){
+      if(sp.alive)areaReveals.push({x:sp.x,y:sp.y,color:sp.color,startMs:now});
+    }
+  }
 
   // Sync clock effect state
   const newIds=new Set(srvClocks.map(c=>c.id));
@@ -661,10 +672,10 @@ function drawWall(r,c,dir,alpha){
   ctx.stroke();ctx.restore();
 }
 
-function drawMazeSection(sx,sy,w,h,alpha){
+function drawMazeSection(sx,sy,w,h,alpha,color='#fff'){
   if(!maze)return;
   ctx.save();ctx.globalAlpha=alpha;
-  ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.lineCap='square';
+  ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.lineCap='square';
   for(let r=Math.max(0,sy);r<Math.min(ROWS,sy+h);r++){
     for(let c=Math.max(0,sx);c<Math.min(COLS,sx+w);c++){
       const cell=maze[r][c];
@@ -740,6 +751,8 @@ function update(dt,now){
   }
   // Clock reveals
   clockReveals=clockReveals.filter(r=>now-r.startMs<1500);
+  // Area reveals (expire after 3s)
+  areaReveals=areaReveals.filter(r=>now-r.startMs<3000);
 
   // Clock timers → latidos
   for(const clock of srvClocks){
@@ -777,6 +790,13 @@ function draw(now){
     const age=now-rev.startMs;
     const alpha=Math.max(0,1-age/1500)*0.65;
     if(alpha>0)drawMazeSection(rev.cx-2,rev.cy-2,5,5,alpha);
+  }
+
+  // Area reveals — 5×5 around each local player, colored, every 20s
+  for(const rev of areaReveals){
+    const age=now-rev.startMs;
+    const alpha=Math.max(0,1-age/3000)*0.7;
+    if(alpha>0)drawMazeSection(rev.x-2,rev.y-2,5,5,alpha,rev.color);
   }
 
   // Wall flashes
